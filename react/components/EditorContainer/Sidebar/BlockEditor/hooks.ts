@@ -2,6 +2,7 @@ import { equals, path } from 'ramda'
 import { useCallback } from 'react'
 import { defineMessages } from 'react-intl'
 
+import { ConfigurationStatus } from '.'
 import {
   getActiveContentId,
   getSchemaPropsOrContent,
@@ -63,10 +64,27 @@ export const useFormHandlers: UseFormHandlers = ({
   setState,
   showToast,
   state,
+  extensionStatus,
 }) => {
   const editor = useEditorContext()
   const formMeta = useFormMetaContext()
   const modal = useModalContext()
+
+  const handleStatusChange = () => {
+    const status = state.status ?? extensionStatus
+
+    setState({
+      ...state,
+      status:
+        status === ConfigurationStatus.ACTIVE
+          ? ConfigurationStatus.INACTIVE
+          : ConfigurationStatus.ACTIVE,
+    })
+
+    if (!formMeta.getWasModified()) {
+      formMeta.setWasModified(true)
+    }
+  }
 
   const handleConditionChange = useCallback(
     (changes: Partial<typeof state['condition']>) => {
@@ -129,16 +147,24 @@ export const useFormHandlers: UseFormHandlers = ({
       propsOrContent: state.formData,
       schema: editor.blockData.componentSchema,
     })
-
     const contentId =
       state.contentId === NEW_CONFIGURATION_ID ? null : state.contentId
 
+    const status = state.status ?? extensionStatus
+
+    const isScheduled = state.condition?.statements.length
+    const isActive = status === ConfigurationStatus.ACTIVE
+    const isDefault = state.origin
+
+    const shouldSendStatus = isActive || isDefault || isScheduled
+
     const configuration = {
+      ...(shouldSendStatus ? { status } : {}),
       condition: state.condition,
       contentId,
       contentJSON: JSON.stringify(content),
       label: state.label || null,
-      origin: state.origin || null,
+      origin: isDefault || null,
     }
 
     const blockId = path<string>(
@@ -185,18 +211,20 @@ export const useFormHandlers: UseFormHandlers = ({
     }
   }, [
     editor,
+    state.formData,
+    state.contentId,
+    state.status,
+    state.condition,
+    state.origin,
+    state.label,
+    extensionStatus,
+    iframeRuntime,
+    saveContent,
     formMeta,
     handleFormClose,
-    iframeRuntime,
-    intl,
     modal,
-    saveContent,
     showToast,
-    state.condition,
-    state.contentId,
-    state.formData,
-    state.label,
-    state.origin,
+    intl,
   ])
 
   const handleFormBack = useCallback(() => {
@@ -376,6 +404,7 @@ export const useFormHandlers: UseFormHandlers = ({
   }, [editor, formMeta, iframeRuntime, intl, modal, setState, state.content])
 
   return {
+    handleStatusChange,
     handleConditionChange,
     handleConfigurationCreate,
     handleConfigurationOpen,

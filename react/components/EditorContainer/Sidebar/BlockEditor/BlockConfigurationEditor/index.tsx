@@ -3,7 +3,15 @@ import { JSONSchema6 } from 'json-schema'
 import React, { useMemo } from 'react'
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl'
 import { FormProps } from 'react-jsonschema-form'
-import { Button, ToastConsumerFunctions } from 'vtex.styleguide'
+// The styleguide is not exporting the warning icon
+import {
+  Button,
+  ToastConsumerFunctions,
+  Toggle,
+  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+  // @ts-ignore
+  IconWarning,
+} from 'vtex.styleguide'
 
 import { useEditorContext } from '../../../../EditorContext'
 import EditableText from '../../../EditableText'
@@ -18,7 +26,14 @@ import { useComponentFormStateStack } from './hooks'
 import styles from './styles.css'
 import { getSchemas } from './utils'
 
+export enum ConfigurationStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SCHEDULED = 'SCHEDULED',
+}
+
 interface Props {
+  status?: string
   condition?: ExtensionConfiguration['condition']
   contentSchema?: JSONSchema6
   data: FormDataContainer
@@ -29,6 +44,7 @@ interface Props {
   label?: string | null
   onBack: () => void
   onChange: FormProps<FormDataContainer>['onChange']
+  onStatusChange: () => void
   onConditionChange?: (
     changes: Partial<ExtensionConfiguration['condition']>
   ) => void
@@ -38,6 +54,7 @@ interface Props {
   onSave: () => void
   showToast: ToastConsumerFunctions['showToast']
   title: ComponentSchema['title']
+  extensionStatus: ConfigurationStatus
 }
 
 const messages = defineMessages({
@@ -46,9 +63,16 @@ const messages = defineMessages({
       'Could not identify {entity}. The configuration will be set to "{template}".',
     id: 'admin/pages.editor.components.condition.toast.error.page-context',
   },
+  activationToggleChecked: {
+    id: 'admin/pages.editor.components.status.activationToggle.checked',
+  },
+  activationToggleUnchecked: {
+    id: 'admin/pages.editor.components.status.activationToggle.unchecked',
+  },
 })
 
 const BlockConfigurationEditor: React.FunctionComponent<Props> = ({
+  status,
   condition,
   contentSchema,
   data,
@@ -59,14 +83,18 @@ const BlockConfigurationEditor: React.FunctionComponent<Props> = ({
   label,
   onBack,
   onChange,
+  onStatusChange,
   onConditionChange,
   onLabelChange,
   onListOpen,
   onSave,
   showToast,
   title,
+  extensionStatus,
 }) => {
   const intl = useIntl()
+  const toggleStatus = status ?? extensionStatus
+  const toggleChecked = toggleStatus === ConfigurationStatus.ACTIVE
 
   React.useEffect(() => {
     const { pageContext } = iframeRuntime.route
@@ -148,6 +176,18 @@ const BlockConfigurationEditor: React.FunctionComponent<Props> = ({
     return defaultContent && defaultContent.contentId === editingContentId
   }, [editor.blockData, editingContentId])
 
+  const getStatusWarningText = () => {
+    if (extensionStatus === ConfigurationStatus.ACTIVE) {
+      return 'You can only activate content. Choose the one you want to be active and all others will be deactivated.'
+    } else if (condition?.statements.length) {
+      return 'This content will activate automatically on the start date you selected. '
+    } else if (toggleChecked) {
+      return 'If you create this content as active, you will see it in the preview now. Other content will be deactivated.'
+    }
+
+    return "If you create this content as inactive, you won't see it in the preview. You will see the currently active content."
+  }
+
   return (
     <div className="w-100 h-100 absolute flex flex-column">
       <div
@@ -209,8 +249,43 @@ const BlockConfigurationEditor: React.FunctionComponent<Props> = ({
               isSitewide={isSitewide}
               onConditionChange={onConditionChange}
               pageContext={iframeRuntime.route.pageContext}
+              extensionStatus={extensionStatus}
             />
           )}
+
+        {isContent && !isDefaultContent && (
+          <div className="mt9 ph5">
+            <>
+              <div className="f4">
+                <FormattedMessage id="admin/pages.editor.components.status.title"></FormattedMessage>
+              </div>
+
+              <div className="mv5">
+                <div className="dib mb6">
+                  <IconWarning />
+                  <span className="ml3">{getStatusWarningText()}</span>
+                </div>
+
+                <Toggle
+                  label={
+                    toggleChecked ? (
+                      <FormattedMessage id="admin/pages.editor.components.status.activationToggle.checked"></FormattedMessage>
+                    ) : (
+                      <FormattedMessage id="admin/pages.editor.components.status.activationToggle.unchecked"></FormattedMessage>
+                    )
+                  }
+                  semantic
+                  disabled={
+                    extensionStatus === ConfigurationStatus.ACTIVE ||
+                    condition?.statements.length
+                  }
+                  checked={toggleChecked}
+                  onChange={() => onStatusChange()}
+                />
+              </div>
+            </>
+          </div>
+        )}
       </div>
 
       <div

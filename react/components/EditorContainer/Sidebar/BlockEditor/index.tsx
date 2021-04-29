@@ -7,19 +7,26 @@ import { useEditorContext } from '../../../EditorContext'
 import DeleteContentMutation from '../../mutations/DeleteContent'
 import Transitions from '../Transitions'
 import { EditingState, FormDataContainer } from '../typings'
-
 import BlockConfigurationEditor from './BlockConfigurationEditor'
 import BlockConfigurationList from './BlockConfigurationList'
 import { useFormHandlers } from './hooks'
 import { UseFormHandlersParams } from './typings'
+import { getActiveContentId } from '../../../../utils/components/index'
 
 type Props = Omit<UseFormHandlersParams, 'setState' | 'state'> & {
   initialEditingState?: EditingState
 }
 
+export enum ConfigurationStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SCHEDULED = 'SCHEDULED',
+}
+
 export interface State extends EditingState {
   mode: 'editingActive' | 'editingInactive' | 'list'
   prevMode?: State['mode']
+  status?: ConfigurationStatus
 }
 
 const BlockEditor = ({
@@ -63,7 +70,22 @@ const BlockEditor = ({
 
   const editor = useEditorContext()
 
+  const activeContentId = getActiveContentId({
+    extensions: iframeRuntime.extensions,
+    treePath: editor.editTreePath,
+  })
+
+  const currentContent = editor.blockData?.configurations?.find(
+    config => state.contentId === config.contentId
+  )
+
+  const extensionStatus =
+    currentContent?.contentId === activeContentId
+      ? ConfigurationStatus.ACTIVE
+      : ConfigurationStatus.INACTIVE
+
   const {
+    handleStatusChange,
     handleConditionChange,
     handleConfigurationCreate,
     handleConfigurationOpen,
@@ -80,6 +102,7 @@ const BlockEditor = ({
     setState,
     showToast,
     state,
+    extensionStatus,
   })
 
   return (
@@ -91,6 +114,7 @@ const BlockEditor = ({
         unmountOnExit
       >
         <BlockConfigurationEditor
+          status={state?.status}
           condition={
             (state
               ? state.condition
@@ -105,11 +129,13 @@ const BlockEditor = ({
           onBack={handleFormBack}
           onChange={handleFormChange}
           onConditionChange={handleConditionChange}
+          onStatusChange={handleStatusChange}
           onLabelChange={handleLabelChange}
           onListOpen={handleListOpen}
           onSave={handleFormSave}
           showToast={showToast}
           title={editor.blockData.title}
+          extensionStatus={extensionStatus}
         />
       </CSSTransition>
 
