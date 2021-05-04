@@ -3,13 +3,11 @@ import { FormattedMessage, InjectedIntlProps, injectIntl } from 'react-intl'
 
 import { getIframeRenderComponents } from '../../../../utils/components'
 import { useEditorContext } from '../../../EditorContext'
-
 import {
   getComponents,
   getNormalizedBlocks,
   getTitleByTreePathMap,
 } from './utils'
-
 import BlockList from './BlockList'
 import styles from '../../EditorContainer.css'
 

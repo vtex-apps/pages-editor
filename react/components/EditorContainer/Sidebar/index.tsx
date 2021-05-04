@@ -42,6 +42,7 @@ const Sidebar: React.FunctionComponent<Props> = ({
     intl,
     showToast,
   })
+  const [scrollState, setScrollState] = React.useState('overflow-y-auto')
 
   const {
     actionHandler: handleModalAction,
@@ -57,19 +58,31 @@ const Sidebar: React.FunctionComponent<Props> = ({
 
   const editor = useEditorContext()
 
+  React.useEffect(() => {
+    document.getElementById('admin-sidebar')?.scroll(0, 0)
+
+    if (
+      editor.editTreePath &&
+      document.getElementById('admin-sidebar')?.scrollTop === 0
+    ) {
+      setScrollState('overflow-y-hidden vh-100')
+    } else setScrollState('overflow-x-auto')
+  }, [editor.editTreePath])
+
   return (
     <div
       id="sidebar-vtex-editor"
-      className="z-1 h-100 w-100 flex flex-row-reverse"
+      className={'z-1 h-100 w-100 flex flex-row-reverse ' + scrollState}
     >
       <nav
         id="admin-sidebar"
         className={
-          `transition animated fadeIn b--light-silver bw1 z-2 h-100 pt8 pt0-ns ` +
+          scrollState +
+          ` transition animated fadeIn b--light-silver bw1 z-2 h-100 pt8 pt0-ns ` +
           `overflow-x-hidden w-100 font-display bg-white shadow-solid-x w-18em-ns ${styles['admin-sidebar']}`
         }
       >
-        <div className="relative h-100 flex flex-column dark-gray">
+        <div className="relative h-100 flex flex-column dark-gray overflow-y-auto">
           <Modal
             isActionDanger={isActionDanger}
             isActionLoading={editor.getIsLoading()}
